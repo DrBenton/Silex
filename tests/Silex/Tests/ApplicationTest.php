@@ -170,18 +170,23 @@ class ApplicationTest extends \PHPUnit_Framework_TestCase
     {
         $app = new Application();
 
+        $me = & $this;
+
         $middlewareTarget = array();
-        $middleware1 = function() use(& $middlewareTarget) {
+        $middleware1 = function(Request $request) use(& $middlewareTarget, $me) {
+            $me->assertEquals('/reached', $request->getRequestUri());
             $middlewareTarget[] = 'middleware1_triggered';
         };
-        $middleware2 = function() use(& $middlewareTarget) {
+        $middleware2 = function(Request $request) use(& $middlewareTarget, $me) {
+            $me->assertEquals('/reached', $request->getRequestUri());
             $middlewareTarget[] = 'middleware2_triggered';
         };
-        $middleware3 = function() use(& $middlewareTarget) {
+        $middleware3 = function(Request $request) use(& $middlewareTarget, $me) {
+            throw new \Exception('This middleware shouldn\'run!');
             $middlewareTarget[] = 'middleware3_triggered';
         };
 
-        $app->get('/', function () use (& $middlewareTarget) {
+        $app->get('/reached', function () use (& $middlewareTarget) {
             $middlewareTarget[] = 'route_triggered';
             return 'hello';
         })
@@ -194,7 +199,7 @@ class ApplicationTest extends \PHPUnit_Framework_TestCase
         })
         ->addMiddleware($middleware3);
 
-        $result = $app->handle(Request::create('/'));
+        $result = $app->handle(Request::create('/reached'));
 
         $this->assertEquals('middleware1_triggered/middleware2_triggered/route_triggered', implode('/', $middlewareTarget) );
         $this->assertEquals('hello', $result->getContent());
