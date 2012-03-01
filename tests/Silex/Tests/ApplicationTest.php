@@ -166,6 +166,41 @@ class ApplicationTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals('text/html; charset=ISO-8859-1', $response->headers->get('Content-Type'));
     }
 
+    public function testRoutesMiddlewares()
+    {
+        $app = new Application();
+
+        $middlewareTarget = array();
+        $middleware1 = function() use(& $middlewareTarget) {
+            $middlewareTarget[] = 'middleware1_triggered';
+        };
+        $middleware2 = function() use(& $middlewareTarget) {
+            $middlewareTarget[] = 'middleware2_triggered';
+        };
+        $middleware3 = function() use(& $middlewareTarget) {
+            $middlewareTarget[] = 'middleware3_triggered';
+        };
+
+        $app->get('/', function () use (& $middlewareTarget) {
+            $middlewareTarget[] = 'route_triggered';
+            return 'hello';
+        })
+        ->addMiddleware($middleware1)
+        ->addMiddleware($middleware2);
+
+        $app->get('/never-reached', function () use (& $middlewareTarget) {
+            $middlewareTarget[] = 'never_reached_triggered';
+            return 'bye';
+        })
+        ->addMiddleware($middleware3);
+
+        $result = $app->handle(Request::create('/'));
+
+        $this->assertEquals('middleware1_triggered/middleware2_triggered/route_triggered', implode('/', $middlewareTarget) );
+        $this->assertEquals('hello', $result->getContent());
+
+    }
+
     /**
      * @expectedException RuntimeException
      */

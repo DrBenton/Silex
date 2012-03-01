@@ -111,6 +111,12 @@ class Application extends \Pimple implements HttpKernelInterface, EventSubscribe
             return new RedirectableUrlMatcher($app['routes'], $app['request_context']);
         });
 
+        $this['route_middlewares_trigger'] = $this->protect(function (Request $request) use ($app) {
+            foreach ($request->attributes->get('_middlewares', array()) as $callback) {
+                call_user_func($callback, $request);
+            }
+        });
+
         $this['request.default_locale'] = 'en';
 
         $this['request'] = function () {
@@ -408,6 +414,7 @@ class Application extends \Pimple implements HttpKernelInterface, EventSubscribe
     {
         if (HttpKernelInterface::MASTER_REQUEST === $event->getRequestType()) {
             $this->beforeDispatched = true;
+            $this['route_middlewares_trigger']($event->getRequest());//Route Middlewares trigger
             $this['dispatcher']->dispatch(SilexEvents::BEFORE, $event);
         }
     }
